@@ -1,7 +1,12 @@
+require 'aws-sdk-s3'
+require 'securerandom'
+
 class Api::V1::ImagesController < ApplicationController
     before_action :set_image, only: [:show, :destroy, :update]
     before_action :check_login, only: [:index, :create, :signed_s3_upload_url]
     before_action :check_owner, only: [:show, :destroy, :update]
+    before_action :set_s3_client, only: [:presigned_upload_url]
+    before_action :signed_url_params, only: [:presigned_upload_url]
 
     # GET /api/v1/images
     # Returns all Image records for the current user
@@ -38,8 +43,19 @@ class Api::V1::ImagesController < ApplicationController
 
     # POST /api/v1/images/signed-url
     # Returns a JSON object containing a signedUrl field for secure file upload from client
+    # Presigned URL requires: Bucket (S3 Bucket name), Key (Name of object), Expires (Expiry time for URL)
     def presigned_upload_url
+        filename = signed_url_params # First param is filename
+        resource = Aws::S3::Resource.new(client: @s3_client)
+        bucket = resource.bucket(Rails.application.credentials.aws[:bucket])
 
+        object_key = "#{filename}-#{SecureRandom.uuid}"
+        obj = bucket.object(object_key)
+        url = obj.presigned_url(:put)
+        render json: { presigned_url: url, object_key: object_key }
+
+    rescue NameError
+        render json: { error: "Failed to get presigned URL" }
     end
 
     private
@@ -55,7 +71,19 @@ class Api::V1::ImagesController < ApplicationController
         head :not_found
     end
 
+    def set_s3_client
+        @s3_client = Aws::S3::Client.new(
+            region:                 'us-east-1', # AWS region
+            access_key_id:          Rails.application.credentials.aws[:access_key_id],
+            secret_access_key:      Rails.application.credentials.aws[:secret_access_key]
+        )
+    end
+
     def image_params
-        params.require(:image).permit(:url)
+        params.require(:image).permit(:url, :filename)
+    end
+
+    def signed_url_params
+        params.require(:filename)
     end
 end
