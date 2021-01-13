@@ -21,7 +21,7 @@ class Api::V1::ImagesController < ApplicationController
     # Generates pre-signed url to view image if it is private, or returns public URL if it is public
     def show
         resource = Aws::S3::Resource.new(client: @s3_client)
-        bucket = resource.bucket(Rails.application.credentials.aws[:bucket])
+        bucket = resource.bucket(Rails.application.credentials[Rails.env.to_sym][:aws][:bucket])
         obj = bucket.object(@image.object_key)
 
         if @image.private
@@ -52,7 +52,7 @@ class Api::V1::ImagesController < ApplicationController
     def destroy
         # Delete from AWS
         resource = Aws::S3::Resource.new(client: @s3_client)
-        bucket = resource.bucket(Rails.application.credentials.aws[:bucket])
+        bucket = resource.bucket(Rails.application.credentials[Rails.env.to_sym][:aws][:bucket])
         obj = bucket.object(@image.object_key)
         obj.delete()
 
@@ -73,7 +73,7 @@ class Api::V1::ImagesController < ApplicationController
     def presigned_upload_url
         filename = signed_url_params # First param is filename
         resource = Aws::S3::Resource.new(client: @s3_client)
-        bucket = resource.bucket(Rails.application.credentials.aws[:bucket])
+        bucket = resource.bucket(Rails.application.credentials[Rails.env.to_sym][:aws][:bucket])
 
         object_key = "#{filename.split(".")[0]}-#{SecureRandom.uuid}.#{filename.split(".")[1]}"
         obj = bucket.object(object_key)
@@ -102,8 +102,8 @@ class Api::V1::ImagesController < ApplicationController
     def set_s3_client
         @s3_client = Aws::S3::Client.new(
             region:                 'us-east-1', # AWS region
-            access_key_id:          Rails.application.credentials.aws[:access_key_id],
-            secret_access_key:      Rails.application.credentials.aws[:secret_access_key]
+            access_key_id:          Rails.application.credentials[Rails.env.to_sym][:aws][:access_key_id],
+            secret_access_key:      Rails.application.credentials[Rails.env.to_sym][:aws][:secret_access_key]
         )
     end
 
