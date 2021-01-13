@@ -5,7 +5,7 @@ class Api::V1::ImagesController < ApplicationController
     before_action :set_image, only: [:show, :destroy, :update]
     before_action :check_login, only: [:index, :create, :signed_s3_upload_url]
     before_action :check_owner, only: [:show, :destroy, :update]
-    before_action :set_s3_client, only: [:presigned_upload_url, :show]
+    before_action :set_s3_client, only: [:presigned_upload_url, :show, :destroy, :update]
     before_action :signed_url_params, only: [:presigned_upload_url]
 
     # GET /api/v1/images
@@ -50,7 +50,14 @@ class Api::V1::ImagesController < ApplicationController
     # Deletes Image record
     # Image is deleted from S3 by key
     def destroy
+        # Delete from AWS
+        resource = Aws::S3::Resource.new(client: @s3_client)
+        bucket = resource.bucket(Rails.application.credentials.aws[:bucket])
+        obj = bucket.object(@image.object_key)
+        obj.delete()
 
+        @image.destroy
+        head 204
     end
 
     # PATCH /api/v1/images/:id
@@ -79,6 +86,8 @@ class Api::V1::ImagesController < ApplicationController
 
     private
 
+
+    # Return 403 Forbidden if the requested resource does not belong to the requesting user
     def check_owner
         head :forbidden unless @image.user_id == current_user&.id
     end
