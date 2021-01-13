@@ -10,6 +10,7 @@ class AuthorizationService
   
     private
   
+    # Check if http authorization header is present
     def http_token
         if @headers['Authorization'].present?
             @headers['Authorization'].split(' ').last
