@@ -18,6 +18,7 @@ class AuthorizationService
     end
   
     def verify_token
+        Rails.logger.debug "Authorization: #{http_token}"
         JsonWebToken.verify(http_token)
     end
   
