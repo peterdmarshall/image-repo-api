@@ -3,9 +3,12 @@ module Authenticable
         return @current_user if @current_user
 
         decoded = AuthorizationService.new(request.headers).authenticate_request!
+        Rails.logger.debug "decoded: #{decoded}"
+
 
         # Get auth0_uid from token and find corresponding user
         auth0_uid = decoded[0]["sub"]
+        Rails.logger.debug "auth0_uid: #{auth0_uid}"
 
         @current_user = User.find_or_create_by(auth0_uid: auth0_uid)
 
