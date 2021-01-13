@@ -4,7 +4,10 @@ module Authenticable
 
         decoded = AuthorizationService.new(request.headers).authenticate_request!
 
-        @current_user = User.find_or_create_by(auth0_uid: decoded[0]["sub"])
+        # Get auth0_uid from token and find corresponding user
+        auth0_uid = decoded[0]["sub"]
+
+        @current_user = User.find_or_create_by(auth0_uid: auth0_uid)
 
     rescue JWT::VerificationError, JWT::DecodeError
         render json: { errors: ['Not Authenticated'] }, status: :unauthorized
