@@ -24,13 +24,14 @@ class Api::V1::ImagesController < ApplicationController
         bucket = resource.bucket(Rails.application.credentials.aws[:bucket])
         obj = bucket.object(@image.object_key)
 
-        if @image.private
+        if @image['private']
             # Generate a signed URL
             url = obj.presigned_url(:get)
             render json: { url: url, filename: @image.filename, filetype: @image.filetype }
         else
             # Generate a public URL
             url = obj.public_url()
+            puts "Public url"
             render json: { url: url, filename: @image.filename, filetype: @image.filetype }
         end
     end
@@ -64,7 +65,34 @@ class Api::V1::ImagesController < ApplicationController
     # Updates stored image settings like Public/Private status
     # If image is set to public/private the corresponding s3 object is set to public/private accordingly
     def update
+        resource = Aws::S3::Resource.new(client: @s3_client)
+        bucket = resource.bucket(Rails.application.credentials.aws[:bucket])
+        obj = bucket.object(@image.object_key)
 
+        image = @image
+        currentPermissions = image['private']
+
+        if @image.update_attributes(image_params)
+            puts "updated successfully"
+            puts image_params[:private]
+            puts currentPermissions
+            if image_params[:private] != currentPermissions
+                # Update s3 object ACL
+                if image_params[:private] == false
+                    # Set ACL to public
+                    res = obj.acl.put({ acl: "public-read" })
+                    Rails.logger.info "Response: #{res}"
+                else
+                    # Set ACL to private
+                    res = obj.acl.put({ acl: "private" })
+                    Rails.logger.info "Response: #{res}"
+                end
+            end
+
+            render json: @image
+        else
+            render json: { error: @image.errors}, status: :unprocessable_entity
+        end
     end
 
     # POST /api/v1/images/signed-url
@@ -114,4 +142,5 @@ class Api::V1::ImagesController < ApplicationController
     def signed_url_params
         params.require(:filename)
     end
+
 end
