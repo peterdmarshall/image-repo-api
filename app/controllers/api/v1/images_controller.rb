@@ -136,7 +136,7 @@ class Api::V1::ImagesController < ApplicationController
     end
 
     def image_params
-        params.require(:images).permit(:object_key, :filename, :filetype, :private)
+        params.require(:image).permit(:object_key, :filename, :filetype, :private)
     end
 
     def signed_url_params
